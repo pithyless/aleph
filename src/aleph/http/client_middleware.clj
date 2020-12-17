@@ -239,30 +239,31 @@
   disables this middleware."
   [client]
   (fn [req]
-    (d/let-flow' [{:keys [status body] :as rsp} (client req)]
-      (if (unexceptional-status? status)
-        rsp
-        (cond
-
-          (false? (opt req :throw-exceptions))
+    (d/let-flow' [rsp (client req)]
+      (let [{:keys [status body]} rsp]
+        (if (unexceptional-status? status)
           rsp
+          (cond
 
-          (instance? InputStream body)
-          (d/chain' (d/future (bs/to-byte-array body))
-            (fn [body]
-              (d/error-deferred
-                (ex-info
-                  (str "status: " status)
-                  (assoc rsp :body (ByteArrayInputStream. body))))))
+            (false? (opt req :throw-exceptions))
+            rsp
 
-          :else
-          (d/chain'
-            (s/reduce conj [] body)
-            (fn [body]
-              (d/error-deferred
-                (ex-info
-                  (str "status: " status)
-                  (assoc rsp :body (s/->source body)))))))))))
+            (instance? InputStream body)
+            (d/chain' (d/future (bs/to-byte-array body))
+              (fn [body]
+                (d/error-deferred
+                  (ex-info
+                    (str "status: " status)
+                    (assoc rsp :body (ByteArrayInputStream. body))))))
+
+            :else
+            (d/chain'
+              (s/reduce conj [] body)
+              (fn [body]
+                (d/error-deferred
+                  (ex-info
+                    (str "status: " status)
+                    (assoc rsp :body (s/->source body))))))))))))
 
 (defn follow-redirect
   "Attempts to follow the redirects from the \"location\" header, if no such
