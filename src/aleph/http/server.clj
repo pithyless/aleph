@@ -10,13 +10,12 @@
     [manifold.stream :as s])
   (:import
     [java.util
-     EnumSet
-     TimeZone
-     Date
-     Locale]
-    [java.text
-     DateFormat
-     SimpleDateFormat]
+     EnumSet]
+    [java.time
+     ZonedDateTime
+     ZoneId]
+    [java.time.format
+     DateTimeFormatter]
     [io.aleph.dirigiste
      Stats$Metric]
     [aleph.http.core
@@ -77,18 +76,11 @@
 
 ;;;
 
-(defonce ^FastThreadLocal date-format (FastThreadLocal.))
 (defonce ^FastThreadLocal date-value (FastThreadLocal.))
 
 (defn rfc-1123-date-string []
-  (let [^DateFormat format
-        (or
-          (.get date-format)
-          (let [format (SimpleDateFormat. "EEE, dd MMM yyyy HH:mm:ss z" Locale/ENGLISH)]
-            (.setTimeZone format (TimeZone/getTimeZone "GMT"))
-            (.set date-format format)
-            format))]
-    (.format format (Date.))))
+  (-> (ZonedDateTime/now ^ZoneId (ZoneId/of "GMT"))
+      (.format ^DateTimeFormatter DateTimeFormatter/RFC_1123_DATE_TIME)))
 
 (defn ^CharSequence date-header-value [^ChannelHandlerContext ctx]
   (if-let [^AtomicReference ref (.get date-value)]
